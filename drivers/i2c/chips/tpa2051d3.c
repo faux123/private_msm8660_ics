@@ -63,14 +63,15 @@ static char LINEOUT_AMP_ON[] =
 static char AMP_0FF[] = {0x00, 0x90};
 
 #ifdef CONFIG_SOUND_CONTROL_HAX_GPL
-char *htc_speaker_vol_control = SPK_AMP_ON;
-char *htc_headset_vol_control = HEADSET_AMP_ON;
-char *htc_ring_vol_control = RING_AMP_ON;
-char *htc_handset_vol_control = HANDSET_AMP_ON;
-char *htc_lineout_vol_control = LINEOUT_AMP_ON;
+static bool snd_hax_inited = false;
+char htc_speaker_vol_control[AMP_ON_CMD_LEN];
+char htc_headset_vol_control[AMP_ON_CMD_LEN];
+char htc_ring_vol_control[AMP_ON_CMD_LEN];
+char htc_handset_vol_control[AMP_ON_CMD_LEN];
+char htc_lineout_vol_control[AMP_ON_CMD_LEN];
 #ifdef CONFIG_SND_CONTROL_HAS_BEATS
-char *htc_beats_on_vol_control = BEATS_AMP_ON;
-char *htc_beats_off_vol_control = BEATS_AMP_OFF;
+char htc_beats_on_vol_control[AMP_ON_CMD_LEN];
+char htc_beats_off_vol_control[AMP_ON_CMD_LEN];
 #endif
 #endif
 
@@ -253,26 +254,41 @@ void set_amp(int on, char *i2c_command)
 void set_speaker_amp(int on)
 {
 	set_amp(on, SPK_AMP_ON);
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+	set_amp(on, htc_speaker_vol_control);
+#endif
 }
 
 void set_headset_amp(int on)
 {
 	set_amp(on, HEADSET_AMP_ON);
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+	set_amp(on, htc_headset_vol_control);
+#endif
 }
 
 void set_speaker_headset_amp(int on)
 {
 	set_amp(on, RING_AMP_ON);
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+	set_amp(on, htc_ring_vol_control);
+#endif
 }
 
 void set_handset_amp(int on)
 {
 	set_amp(on, HANDSET_AMP_ON);
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+	set_amp(on, htc_handset_vol_control);
+#endif
 }
 
 void set_usb_audio_amp(int on)
 {
 	set_amp(on, LINEOUT_AMP_ON);
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+	set_amp(on, htc_lineout_vol_control);
+#endif
 }
 
 void set_beats_on(int en)
@@ -281,10 +297,18 @@ void set_beats_on(int en)
 	mutex_lock(&spk_amp_lock);
 	if (en) {
 		tpa2051_i2c_write(BEATS_AMP_ON, AMP_ON_CMD_LEN);
+#ifdef CONFIG_SND_CONTROL_HAS_BEATS
+		tpa2051_i2c_write(htc_beats_on_vol_control, AMP_ON_CMD_LEN);
+#endif
+
 		pr_info("%s: en(%d) reg_value[5]=%2x, reg_value[6]=%2x\n", __func__,  \
 				en, BEATS_AMP_ON[5], BEATS_AMP_ON[6]);
 	} else {
 		tpa2051_i2c_write(BEATS_AMP_OFF, AMP_ON_CMD_LEN);
+#ifdef CONFIG_SND_CONTROL_HAS_BEATS
+		tpa2051_i2c_write(htc_beats_off_vol_control, AMP_ON_CMD_LEN);
+#endif
+
 		pr_info("%s: en(%d)  reg_value[5]=%2x, reg_value[6]=%2x\n", __func__,  \
 				en, BEATS_AMP_OFF[5], BEATS_AMP_OFF[6]);
 	}
@@ -500,6 +524,27 @@ int tpa2051d3_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (pdata->rece_cmd[1] != 0)
 		memcpy(HANDSET_AMP_ON, pdata->rece_cmd, sizeof(HANDSET_AMP_ON));
 
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+	if (!snd_hax_inited) {
+		memcpy(htc_speaker_vol_control, SPK_AMP_ON,
+			sizeof(AMP_ON_CMD_LEN));
+		memcpy(htc_headset_vol_control, HEADSET_AMP_ON,
+			sizeof(AMP_ON_CMD_LEN));
+		memcpy(htc_ring_vol_control, RING_AMP_ON,
+			sizeof(AMP_ON_CMD_LEN));
+		memcpy(htc_handset_vol_control, HANDSET_AMP_ON,
+			sizeof(AMP_ON_CMD_LEN));
+		memcpy(htc_lineout_vol_control, LINEOUT_AMP_ON,
+			sizeof(AMP_ON_CMD_LEN));
+#ifdef CONFIG_SND_CONTROL_HAS_BEATS
+		memcpy(htc_beats_on_vol_control, BEATS_AMP_ON,
+			sizeof(AMP_ON_CMD_LEN));
+		memcpy(htc_beats_off_vol_control, BEATS_AMP_OFF,
+			sizeof(AMP_ON_CMD_LEN));
+#endif
+		snd_hax_inited = true;
+	}
+#endif
 	return 0;
 
 err_free_gpio_all:
